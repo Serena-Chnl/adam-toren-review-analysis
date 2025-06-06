@@ -1,0 +1,11 @@
+streamlit
+pandas
+Pillow
+plotly
+plotly-express
+numpy
+nltk
+wordcloud
+matplotlib
+pycountry
+fuzzywuzzy
