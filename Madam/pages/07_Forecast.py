@@ -32,7 +32,7 @@ def create_styled_metric(label, value_str, background_color="#510f30", text_colo
     return html
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Volumn Forecast - Madam", layout="wide")
+st.set_page_config(page_title="Forecast Analysis- Madam", layout="wide")
 
 # --- Logo and Title Section ---
 try:
@@ -40,7 +40,7 @@ try:
     madam_logo_display = Image.open(logo_path)
     col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
     with col_title:
-        st.title("Volumn Forecast")
+        st.title("Forecast Analysis")
     with col_logo:
         st.image(madam_logo_display, width=350)
 except FileNotFoundError:
@@ -52,7 +52,7 @@ except Exception as e:
 
 # --- Retrieve Processed Data ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
-    st.error("Data not loaded. Please ensure data is available from the main page (Home.py).")
+    st.error("Welkom! To begin, please click the '**Home**' page from the sidebar to load the dataset automatically. All pages will be available right after ☺︎")
     st.stop()
 
 all_data = st.session_state.processed_data.copy()

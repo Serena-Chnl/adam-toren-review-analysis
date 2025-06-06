@@ -205,7 +205,7 @@ display_header()
 # --- Retrieve Processed Data ---
 def load_data() -> Optional[pd.DataFrame]:
     if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
-        st.error("Data not loaded. Please ensure data is available from the main page (app.py).")
+        st.error("Welkom! To begin, please click the '**Home**' page from the sidebar to load the dataset automatically. All pages will be available right after ☺︎")
         return None
     return st.session_state.processed_data.copy()
 

@@ -73,10 +73,9 @@ with col_logo:
     except Exception as e:
         st.error(f"An error occurred while loading the logo: {e}. Ensure the file is a valid image and the path is correct: {logo_path}")
 
-
 # --- Retrieve Processed Data from Session State ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
-    st.error("Data not loaded. Please ensure data is available from the main page (app.py).")
+    st.error("Welkom! To begin, please click the '**Home**' page from the sidebar to load the dataset automatically. All pages will be available right after ☺︎")
     st.stop()
 
 all_data = st.session_state.processed_data
@@ -123,8 +122,19 @@ else:
 # --- Text Preprocessing and Keyword Extraction ---
 lemmatizer = WordNetLemmatizer()
 stop_words_english = set(stopwords.words('english'))
-custom_stopwords = {'madam', 'restaurant', 'place', 'also', 'get', 'got', 'would', 'could', 'like', 'good', 'great', 'nice', 'food', 'service', 'time', 'experience', 'amsterdam', 'really', 'one', 'even', 'us', 'went', 'came', 'told', 'asked'}
+# Modified: Adjusted stopwords for word cloud to highlight dishes
+custom_stopwords = {
+    'madam', 'restaurant', 'place', 'also', 'get', 'got', 'would', 'could', 'like', 'time', 'experience', 'amsterdam',
+    'really', 'one', 'even', 'us', 'went', 'came', 'told', 'asked', 'view', 'staff', 'server', 'waitress', 'waiter',
+    'hostess', 'manager', 'served'
+}
 stop_words_english.update(custom_stopwords)
+
+# Dish whitelist to ensure specific dishes are retained
+dish_whitelist = {
+    'burger', 'salmon', 'steak', 'fries', 'salad', 'cod', 'pasta', 'ravioli', 'schnitzel', 'cocktail', 'cocktails',
+    'wine', 'water', 'coffee', 'dessert', 'cake', 'burrata', 'carpaccio', 'soup', 'tenderloin'
+}
 
 def preprocess_text_for_keywords(text):
     if pd.isna(text):
@@ -136,6 +146,20 @@ def preprocess_text_for_keywords(text):
     lemmatized_words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words_english and len(word) > 2]
     return lemmatized_words
 
+def preprocess_text_for_wordcloud(text):
+    if pd.isna(text):
+        return []
+    text = str(text).lower()
+    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    words = text.split()
+    # Retain dish whitelist words and descriptive adjectives, skip stopwords
+    lemmatized_words = [
+        lemmatizer.lemmatize(word) for word in words
+        if (word in dish_whitelist or word in {'delicious', 'tasty', 'amazing', 'bad', 'poor', 'bland', 'salty'})
+    ]
+    return lemmatized_words
+
 # --- Main Page Content ---
 
 # --- Calculate KPIs for Most Mentioned Words by Rating ---
@@ -143,10 +167,10 @@ if 'processed_data' in st.session_state and st.session_state.processed_data is n
     all_data = st.session_state.processed_data
     lemmatizer = WordNetLemmatizer()
     stop_words_english = set(stopwords.words('english'))
-    custom_stopwords = {'madam', 'restaurant', 'place', 'also', 'get', 'got', 'would', 'could', 'like', 'good', 'great', 'nice', 'food', 'service', 'time', 'experience', 'amsterdam', 'really', 'one', 'even', 'us', 'went', 'came', 'told', 'asked'}
+    custom_stopwords = {'madam', 'restaurant', 'place', 'also', 'get', 'got', 'would', 'could', 'like', 'good', 'great', 'nice', 'time', 'experience', 'amsterdam', 'really', 'one', 'even', 'us', 'went', 'came', 'told', 'asked'}
     stop_words_english.update(custom_stopwords)
 
-    def preprocess_text_for_keywords(text):
+    def preprocess_text_for_kpis(text):
         if pd.isna(text):
             return []
         text = str(text).lower()
@@ -156,6 +180,15 @@ if 'processed_data' in st.session_state and st.session_state.processed_data is n
         lemmatized_words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words_english and len(word) > 2]
         return lemmatized_words
 
+    # Define keyword groups for KPIs
+    keyword_groups = {
+        'service': ['service', 'server', 'waitress', 'waiter', 'staff', 'hostess', 'manager', 'served'],
+        'food': ['food', 'meal', 'dish', 'dishes', 'salmon', 'burger', 'steak', 'fries', 'salad', 'cod', 'menu'],
+        'view': ['view', 'views', 'scenery'],
+        'restaurant': ['restaurant', 'place', 'location'],
+        'drinks': ['drinks', 'cocktail', 'cocktails', 'wine', 'water', 'coffee']
+    }
+
     # Initialize KPI values
     kpi_words = {5: "N/A", 4: "N/A", 3: "N/A", 2: "N/A", 1: "N/A"}
 
@@ -164,12 +197,20 @@ if 'processed_data' in st.session_state and st.session_state.processed_data is n
             rating_data = all_data[all_data['Rating'] == rating]
             all_words = []
             for review_text in rating_data['Review']:
-                all_words.extend(preprocess_text_for_keywords(review_text))
+                all_words.extend(preprocess_text_for_kpis(review_text))
+            
             if all_words:
                 word_counts = Counter(all_words)
-                most_common = word_counts.most_common(1)
-                if most_common:
-                    kpi_words[rating] = most_common[0][0].capitalize()
+                group_counts = {key: 0 for key in keyword_groups}
+                for word, count in word_counts.items():
+                    for group, synonyms in keyword_groups.items():
+                        if word in synonyms:
+                            group_counts[group] += count
+                top_group = max(group_counts, key=group_counts.get, default="N/A")
+                if group_counts[top_group] > 0:
+                    kpi_words[rating] = top_group.capitalize()
+                else:
+                    kpi_words[rating] = "N/A"
 
 if filtered_data_for_keywords is None or filtered_data_for_keywords.empty:
     if 'start_date_kw' in locals():
@@ -197,8 +238,6 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-
-
 
     st.markdown(
         """
@@ -256,7 +295,6 @@ else:
             st.info("No keywords found after preprocessing for the current selection.")
         else:
             word_counts = Counter(all_words)
-            # Ensure we take up to num_keywords or all available if fewer
             most_common_words = word_counts.most_common(num_keywords)
             
             if not most_common_words:
@@ -268,12 +306,9 @@ else:
                 st.subheader(f"▸ Top Keywords Bubble Chart ({sentiment_filter_kw}) ")
                 if not df_most_common.empty:
                     try:
-                        # Clean DataFrame
                         df_most_common = df_most_common.dropna(subset=['Keyword', 'Frequency']).copy()
                         df_most_common['Keyword'] = df_most_common['Keyword'].astype(str)
                         df_most_common['Frequency'] = df_most_common['Frequency'].astype(int)
-
-                        # Bubble Chart
                         fig_bubble = px.scatter(
                             df_most_common,
                             x='Keyword',
@@ -286,7 +321,7 @@ else:
                         )
                         fig_bubble.update_layout(
                             xaxis_title="Keyword",
-                            yaxis_title="Frequency",
+                            yaxis_title="",
                             showlegend=True,
                             xaxis_tickangle=45,
                             margin=dict(t=50, l=25, r=25, b=25)
@@ -299,49 +334,53 @@ else:
 
             # --- Word Cloud ---
             st.subheader(f"▸ Keyword Cloud ({sentiment_filter_kw})")
-            if word_counts:
-                try:
-                    wc = WordCloud(
-                        width=800,
-                        height=400,
-                        background_color='white',
-                        colormap='viridis',
-                        max_words=100,
-                        contour_width=1,
-                        contour_color='steelblue'
-                    ).generate_from_frequencies(dict(word_counts))
-                    fig_wc, ax = plt.subplots(figsize=(12, 6))
-                    ax.imshow(wc, interpolation='bilinear')
-                    ax.axis('off')
-                    st.pyplot(fig_wc)
-                except Exception as e:
-                    st.error(f"Could not generate word cloud: {e}")
+            all_words_wc = []
+            for review_text in data_to_analyze_keywords['Review']:
+                all_words_wc.extend(preprocess_text_for_wordcloud(review_text))
+            
+            if not all_words_wc:
+                st.info("No keywords found after preprocessing for the word cloud.")
             else:
-                st.info("Not enough data to generate a word cloud for the current selection.")
+                word_counts_wc = Counter(all_words_wc)
+                if word_counts_wc:
+                    try:
+                        wc = WordCloud(
+                            width=800,
+                            height=400,
+                            background_color='white',
+                            colormap='viridis',
+                            max_words=50,  # Reduced to focus on high-impact words
+                            contour_width=1,
+                            contour_color='steelblue'
+                        ).generate_from_frequencies(dict(word_counts_wc))
+                        fig_wc, ax = plt.subplots(figsize=(12, 6))
+                        ax.imshow(wc, interpolation='bilinear')
+                        ax.axis('off')
+                        st.pyplot(fig_wc)
+                    except Exception as e:
+                        st.error(f"Could not generate word cloud: {e}")
+                else:
+                    st.info("Not enough data to generate a word cloud for the current selection.")
 
 # --- Keyword Comparison: Weekday vs. Weekend ---
 st.markdown("---")
 st.subheader("▸ Keyword Comparison: Weekday vs. Weekend")
 
-# Check for required columns
 if 'Time' in filtered_data_for_keywords.columns and \
    pd.api.types.is_datetime64_any_dtype(filtered_data_for_keywords['Time']) and \
    'Review' in filtered_data_for_keywords.columns and \
    'label' in filtered_data_for_keywords.columns:
-
-    # --- Data Preparation ---
+    
     comparison_data = filtered_data_for_keywords.copy()
     comparison_data['DayType'] = comparison_data['Time'].dt.dayofweek.apply(
         lambda x: 'Weekend' if x >= 5 else 'Weekday'
     )
     
-    # Filter data into the four categories
     weekday_positive_data = comparison_data[(comparison_data['DayType'] == 'Weekday') & (comparison_data['label'] == 'positive')]
     weekend_positive_data = comparison_data[(comparison_data['DayType'] == 'Weekend') & (comparison_data['label'] == 'positive')]
     weekday_negative_data = comparison_data[(comparison_data['DayType'] == 'Weekday') & (comparison_data['label'] == 'negative')]
     weekend_negative_data = comparison_data[(comparison_data['DayType'] == 'Weekend') & (comparison_data['label'] == 'negative')]
 
-    # Helper function to get keyword dataframe
     def get_keyword_df(df):
         if not df.empty:
             words = []
@@ -354,20 +393,17 @@ if 'Time' in filtered_data_for_keywords.columns and \
                 return pd.DataFrame(most_common, columns=['Keyword', 'Frequency'])
         return pd.DataFrame(columns=['Keyword', 'Frequency'])
 
-    # --- Layout with two columns ---
     col_positive, col_negative = st.columns(2)
 
     with col_positive:
         st.markdown("<h5 style='text-align: center; font-weight: bold;'>Positive Reviews</h5>", unsafe_allow_html=True)
         
-        # Get positive keyword dataframes
         df_wp = get_keyword_df(weekday_positive_data)
         df_we_p = get_keyword_df(weekend_positive_data)
         
         if df_wp.empty and df_we_p.empty:
             st.info("No positive review data available to compare.")
         else:
-            # Combine, create multi-header, and set 1-based index
             df_positive_combined = pd.concat([df_wp.reset_index(drop=True), df_we_p.reset_index(drop=True)], axis=1)
             df_positive_combined.columns = pd.MultiIndex.from_tuples([
                 ('Weekday', 'Keyword'), ('Weekday', 'Frequency'),
@@ -379,14 +415,12 @@ if 'Time' in filtered_data_for_keywords.columns and \
     with col_negative:
         st.markdown("<h5 style='text-align: center; font-weight: bold;'>Negative Reviews</h5>", unsafe_allow_html=True)
         
-        # Get negative keyword dataframes
         df_wn = get_keyword_df(weekday_negative_data)
         df_we_n = get_keyword_df(weekend_negative_data)
         
         if df_wn.empty and df_we_n.empty:
             st.info("No negative review data available to compare.")
         else:
-            # Combine, create multi-header, and set 1-based index
             df_negative_combined = pd.concat([df_wn.reset_index(drop=True), df_we_n.reset_index(drop=True)], axis=1)
             df_negative_combined.columns = pd.MultiIndex.from_tuples([
                 ('Weekday', 'Keyword'), ('Weekday', 'Frequency'),
@@ -399,11 +433,11 @@ else:
     st.warning("Cannot perform comparison. Required columns: 'Time', 'Review', 'label'.")
 
 st.info("""
-        **Note on Keywords in Negative Reviews:**
-        Sometimes, a word that seems positive (like "view" or a staff name) might appear here.
-        This can happen if the word was mentioned in a review that was *overall* negative due to other factors
-        (e.g., "The view was great, but the food was terrible.").
-        To understand the full context, it's recommended to find these reviews in the "Review Explorer" page.
-        """)
+    **Note on Keywords in Negative Reviews:**
+    Sometimes, a word that seems positive (like "view" or a staff name) might appear here.
+    This can happen if the word was mentioned in a review that was *overall negative* due to other factors
+    (e.g., "The view was great, but the food was terrible.").
+    To understand the full context, it's recommended to find these reviews in the "Review Explorer" page.
+    """)
 
 st.markdown("---")

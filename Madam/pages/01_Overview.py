@@ -64,7 +64,7 @@ with col_logo:
 
 # --- Retrieve Processed Data from Session State (Your existing code) ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
-    st.error("Data not loaded. Please ensure data is available from the main page (Home.py).")
+    st.error("Welkom! To begin, please click the '**Home**' page from the sidebar to load the dataset automatically. All pages will be available right after ☺︎")
     st.stop()
 
 all_data = st.session_state.processed_data
