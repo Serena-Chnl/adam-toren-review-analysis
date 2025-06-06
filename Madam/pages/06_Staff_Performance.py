@@ -18,6 +18,8 @@ import os
 from Home import download_nltk_resources
 
 
+# --- Page Configuration ---
+st.set_page_config(page_title="Staff Performance Analysis - Madam", layout="wide")
 
 
 # Call centralized NLTK resource download
@@ -157,8 +159,6 @@ def analyze_staff_mentions(
         })
     return pd.DataFrame(staff_performance_data)
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Staff Performance Analysis - Madam", layout="wide")
 
 # --- Custom CSS for Centering Table Columns ---
 st.markdown("""

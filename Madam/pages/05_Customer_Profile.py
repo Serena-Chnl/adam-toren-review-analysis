@@ -15,6 +15,9 @@ import os # Import os
 
 from Home import download_nltk_resources
 
+# --- Page Configuration ---
+st.set_page_config(page_title="Customer Profile Analysis - Madam", layout="wide")
+
 # Call centralized NLTK resource download
 if not download_nltk_resources():
     st.error("Failed to download required NLTK resources. Some features may not work.")
@@ -85,8 +88,7 @@ def get_top_keywords(text_series, n=5):
     except Exception as e:
         return [f'Error: {str(e)}']
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Customer Profile Analysis - Madam", layout="wide")
+
 
 # --- Logo and Title Section ---
 try:
