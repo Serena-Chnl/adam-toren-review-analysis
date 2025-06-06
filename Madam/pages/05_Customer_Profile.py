@@ -1,6 +1,11 @@
 # pages/05_Customer_Profile.py
 
 import streamlit as st
+
+# --- Page Configuration ---
+st.set_page_config(page_title="Customer Profile Analysis", layout="wide")
+
+
 import pandas as pd
 from PIL import Image
 from pathlib import Path
@@ -15,8 +20,7 @@ import os # Import os
 
 from Home import download_nltk_resources
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Customer Profile Analysis - Madam", layout="wide")
+
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():

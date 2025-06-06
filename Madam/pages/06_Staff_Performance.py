@@ -1,6 +1,11 @@
 # pages/06_Staff_Performance.py
 
 import streamlit as st
+
+# --- Page Configuration ---
+st.set_page_config(page_title="Staff Performance Analysis", layout="wide")
+
+
 import pandas as pd
 import plotly.express as px
 from fuzzywuzzy import fuzz
@@ -18,8 +23,7 @@ import os
 from Home import download_nltk_resources
 
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Staff Performance Analysis - Madam", layout="wide")
+
 
 
 # Call centralized NLTK resource download
