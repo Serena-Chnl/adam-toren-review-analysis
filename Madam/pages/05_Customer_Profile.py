@@ -1,11 +1,6 @@
 # pages/05_Customer_Profile.py
 
 import streamlit as st
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Customer Profile Analysis", layout="wide")
-
-
 import pandas as pd
 from PIL import Image
 from pathlib import Path
@@ -20,7 +15,8 @@ import os # Import os
 
 from Home import download_nltk_resources
 
-
+# --- Page Configuration ---
+st.set_page_config(page_title="Customer Profile Analysis", layout="wide")
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():
@@ -158,6 +154,8 @@ if 'Time' in all_data.columns and pd.api.types.is_datetime64_any_dtype(all_data[
             ]
     else:
         filtered_data = all_data.copy()
+
+    st.sidebar.markdown("❕If this page displays the Home page and errors, click '**Customer Profile**'again to fix.")
 else:
     st.sidebar.warning("Date filter for KPIs cannot be applied: 'Time' column issue.")
     filtered_data = pd.DataFrame(columns=all_data.columns)

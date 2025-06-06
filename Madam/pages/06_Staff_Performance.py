@@ -1,11 +1,6 @@
 # pages/06_Staff_Performance.py
 
 import streamlit as st
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Staff Performance Analysis", layout="wide")
-
-
 import pandas as pd
 import plotly.express as px
 from fuzzywuzzy import fuzz
@@ -23,7 +18,8 @@ import os
 from Home import download_nltk_resources
 
 
-
+# --- Page Configuration ---
+st.set_page_config(page_title="Staff Performance Analysis", layout="wide")
 
 
 # Call centralized NLTK resource download
@@ -257,6 +253,8 @@ def apply_date_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Optional[str], O
             filtered_df = df[
                 (df['Time'] >= start_datetime) & (df['Time'] <= end_datetime)
             ]
+        st.sidebar.markdown("❕If this page displays the Home page and errors, click '**Staff Performance**'again to fix.")
+
     else:
         st.sidebar.warning("Date filter cannot be applied: 'Time' column issue.")
     
