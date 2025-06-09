@@ -17,10 +17,8 @@ import os
 
 from Home import download_nltk_resources
 
-
 # --- Page Configuration ---
 st.set_page_config(page_title="Staff Performance Analysis", layout="wide")
-
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():
@@ -40,9 +38,6 @@ STAFF_NAMES = [
 STAFF_NAME_VARIANTS = {
     "Nikita": ["Nikkita", "Nekita", "Nikta", "Nickita"],
     "Camila": ["Camilia", "Camilla", "Camela", "Kamila"],
-    # Add more variants as needed, e.g.:
-    # "Aimée": ["Aimee", "Aime", "Amée"],
-    # "Georgios Moy": ["Georgios", "Georgeos Moy", "Georgio Moy"],
 }
 
 # Extract first names and handle duplicates (e.g., Tessa D. and Tessa H. -> Tessa)
@@ -80,7 +75,6 @@ def create_styled_metric(label: str, value_str: str, background_color: str = "#5
 """
     return html
 
-
 def extract_top_keywords(reviews: pd.Series, staff_name: str, num_keywords: int = 5) -> List[str]:  
     stop_words = set(stopwords.words('english'))
     lemmatizer = WordNetLemmatizer()
@@ -98,8 +92,7 @@ def extract_top_keywords(reviews: pd.Series, staff_name: str, num_keywords: int 
     word_counts = Counter(words)
     return [word for word, _ in word_counts.most_common(num_keywords)]
 
-
-def extract_mentioned_languages(reviews: pd.Series, valid_languages: set) -> str:  # <--- ADDED: Function to detect mentioned languages
+def extract_mentioned_languages(reviews: pd.Series, valid_languages: set) -> str:
     """
     Checks reviews for mentions of languages in valid_languages.
     Returns comma-separated string of mentioned languages or 'None'.
@@ -111,8 +104,6 @@ def extract_mentioned_languages(reviews: pd.Series, valid_languages: set) -> str
             if re.search(r'\b' + re.escape(lang.lower()) + r'\b', review_lower):
                 mentioned_languages.add(lang)
     return ', '.join(sorted(mentioned_languages)) if mentioned_languages else 'None'
-
-
 
 def analyze_staff_mentions(
     df: pd.DataFrame,
@@ -126,13 +117,11 @@ def analyze_staff_mentions(
         return pd.DataFrame(columns=['Staff Name', 'Number of Mentions', 'Average Rating of Mentions', 'Average Sentiment of Mentions', 'Mentioned Reviews'])
 
     for staff_name in staff_list:
-        # 构建正则表达式，包含正确名字及其拼写变体
         variants = STAFF_NAME_VARIANTS.get(staff_name, [])
         all_names = [staff_name] + variants
         pattern = r'\b(' + '|'.join(re.escape(name) for name in all_names) + r')\b'
         exact_matches = df[df[review_col].str.contains(pattern, case=False, na=False, regex=True)]
         
-        # 模糊匹配，处理未预定义的拼写错误
         fuzzy_matches = []
         for idx, review in df[review_col].dropna().items():
             words = re.findall(r'\b\w+\b', str(review).lower())
@@ -144,7 +133,6 @@ def analyze_staff_mentions(
                         fuzzy_matches.append(idx)
         fuzzy_matches_df = df.loc[fuzzy_matches].drop_duplicates()
         
-        # 合并精确匹配和模糊匹配
         combined_reviews_df = pd.concat([exact_matches, fuzzy_matches_df]).drop_duplicates()
         
         num_mentions = len(combined_reviews_df)
@@ -159,22 +147,18 @@ def analyze_staff_mentions(
         })
     return pd.DataFrame(staff_performance_data)
 
-
 # --- Custom CSS for Centering Table Columns ---
 st.markdown("""
     <style>
-    /* Target AG Grid cells and headers specifically */
     div[data-testid="stDataFrame"] .ag-cell,
     div[data-testid="stDataFrame"] .ag-header-cell {
         text-align: center !important;
         justify-content: center !important;
     }
-    /* Ensure header labels are centered */
     div[data-testid="stDataFrame"] .ag-header-cell-label {
         display: flex !important;
         justify-content: center !important;
     }
-    /* Fallback for older Streamlit versions */
     div[data-testid="stTable"] td,
     div[data-testid="stTable"] th {
         text-align: center !important;
@@ -292,12 +276,25 @@ else:
         
         if not mentioned_staff.empty:
             sorted_staff = mentioned_staff.sort_values('Number of Mentions', ascending=False)
-            if len(sorted_staff) >= 1:
-                kpi_top_1 = sorted_staff.iloc[0]['Staff Name']
-            if len(sorted_staff) >= 2:
-                kpi_top_2 = sorted_staff.iloc[1]['Staff Name']
-            if len(sorted_staff) >= 3:
-                kpi_top_3 = sorted_staff.iloc[2]['Staff Name']
+            # Group by Number of Mentions to handle ties
+            grouped = sorted_staff.groupby('Number of Mentions')['Staff Name'].apply(list).reset_index()
+            grouped = grouped.sort_values('Number of Mentions', ascending=False)
+            
+            # Initialize lists for top 3 ranks
+            top_1_names = []
+            top_2_names = []
+            top_3_names = []
+            
+            # Assign names to top 3 ranks, handling ties
+            if len(grouped) >= 1:
+                top_1_names = grouped.iloc[0]['Staff Name']
+                kpi_top_1 = ', '.join(top_1_names)
+            if len(grouped) >= 2:
+                top_2_names = grouped.iloc[1]['Staff Name']
+                kpi_top_2 = ', '.join(top_2_names)
+            if len(grouped) >= 3:
+                top_3_names = grouped.iloc[2]['Staff Name']
+                kpi_top_3 = ', '.join(top_3_names)
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -312,12 +309,11 @@ else:
         # --- Summary Table ---
         st.markdown("##### Staff Performance Summary")
         display_summary_df = staff_summary_df[['Staff Name', 'Number of Mentions', 'Average Rating of Mentions', 'Average Sentiment of Mentions']].copy()
-        # Format all columns as strings to ensure consistent text alignment
         display_summary_df['Number of Mentions'] = display_summary_df['Number of Mentions'].map(lambda x: f"{int(x)}" if pd.notnull(x) else "N/A")
         display_summary_df['Average Rating of Mentions'] = display_summary_df['Average Rating of Mentions'].map(lambda x: f"{x:.2f} ⭐" if pd.notnull(x) else "N/A")
         display_summary_df['Average Sentiment of Mentions'] = display_summary_df['Average Sentiment of Mentions'].map(lambda x: f"{x:.2f}" if pd.notnull(x) else "N/A")
         st.dataframe(
-            display_summary_df.sort_values(by='Number of Mentions', ascending=False, key=lambda x: x.astype(int)),  # Sort as integer
+            display_summary_df.sort_values(by='Number of Mentions', ascending=False, key=lambda x: x.astype(int)),
             use_container_width=True,
             hide_index=True,
             column_config={
@@ -376,18 +372,14 @@ else:
             st.markdown("*Only top 3 most mentioned staff are included.*")
             keyword_data = []
             if not mentioned_staff.empty:
-                # Get valid languages from dataset
-                valid_languages = set(all_data['Language'].dropna().unique())  # <--- ADDED: Get unique languages from dataset
-                # Select top 3 staff based on Number of Mentions
+                valid_languages = set(all_data['Language'].dropna().unique())
                 top_3_staff = mentioned_staff.sort_values('Number of Mentions', ascending=False).head(3)
                 for _, row in top_3_staff.iterrows():
                     staff_name = row['Staff Name']
                     reviews_df = row['Mentioned Reviews']
                     top_keywords = extract_top_keywords(reviews_df['Review'], staff_name) if not reviews_df.empty else []
-                    # Join keywords with commas, pad with N/A if fewer than 5
-                    keywords_str = ', '.join(top_keywords + ['N/A'] * (5 - len(top_keywords))) if top_keywords else ', '.join(['N/A'] * 5)  # <--- CHANGED: Updated to 5 keywords
-                    # Extract mentioned languages
-                    mentioned_langs = extract_mentioned_languages(reviews_df['Review'], valid_languages) if not reviews_df.empty else 'None'  # <--- ADDED: Get mentioned languages
+                    keywords_str = ', '.join(top_keywords + ['N/A'] * (5 - len(top_keywords))) if top_keywords else ', '.join(['N/A'] * 5)
+                    mentioned_langs = extract_mentioned_languages(reviews_df['Review'], valid_languages) if not reviews_df.empty else 'None'
                     keyword_data.append({
                         'Staff Name': staff_name,
                         'Top Keywords': keywords_str,
@@ -405,15 +397,15 @@ else:
                             width="medium"
                         ),
                         "Top Keywords": st.column_config.TextColumn(
-                            help="Top 5 keywords associated with the staff, comma-separated",  # <--- CHANGED: Updated help text to reflect 5 keywords
+                            help="Top 5 keywords associated with the staff, comma-separated",
                             width="large"
                         ),
                         "Mentioned Languages": st.column_config.TextColumn(
-                            help="Languages mentioned in reviews associated with the staff, comma-separated",  # <--- ADDED: Help text for new column
+                            help="Languages mentioned in reviews associated with the staff, comma-separated",
                             width="medium"
                         )
                     },
-                    column_order=["Staff Name", "Top Keywords", "Mentioned Languages"]  # <--- ADDED: Explicit column order
+                    column_order=["Staff Name", "Top Keywords", "Mentioned Languages"]
                 )
             else:
                 st.info("No staff with mentions found for keyword analysis.")
@@ -435,5 +427,3 @@ else:
                 st.info(f"No specific review details found for {selected_staff_review}.")
         else:
             st.info("No mentions found for staff names in the selected period.")
-
-# Debugging Note: If columns in the Staff Performance Summary table are not centered, please check the Streamlit version (run `streamlit --version`) and confirm if the table headers and cells remain misaligned (e.g., 'Number of Mentions' right-aligned, 'Average Rating/Sentiment' left-aligned). A screenshot or description of the misalignment will help diagnose further.
