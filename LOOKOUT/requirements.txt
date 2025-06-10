@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+plotly
+Pillow
+nltk
+wordcloud
+matplotlib
+prophet
+holidays
+scipy
+pycountry
