@@ -50,47 +50,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# 强制浅色主题的 CSS
-st.markdown("""
-    <style>
-    /* 主页面和应用程序背景 */
-    body, .stApp {
-        background-color: #f9fafb !important;
-    }
-    /* 侧边栏背景 */
-    [data-testid="stSidebar"] {
-        background-color: #e5e7eb !important;
-    }
-    /* 文本颜色 */
-    h1, h2, h3, h4, h5, h6, p, div, span, label {
-        color: #374151 !important;
-    }
-    /* 表格和数据框架背景 */
-    [data-testid="stDataFrame"], [data-testid="stTable"] {
-        background-color: #ffffff !important;
-    }
-    /* Plotly 图表背景 */
-    .plotly-graph-div, .js-plotly-plot .plotly .main-svg {
-        background-color: #ffffff !important;
-    }
-    /* 增强侧边栏过滤器边框（如日期选择器） */
-    [data-testid="stDateInput"] input, [data-testid="stSelectbox"] div, [data-testid="stSlider"] div {
-        border: 1px solid #d1d5db !important;
-        border-radius: 4px !important;
-        background-color: #ffffff !important;
-        color: #374151 !important;
-    }
-    /* 侧边栏输入框焦点样式 */
-    [data-testid="stDateInput"] input:focus, [data-testid="stSelectbox"] div:focus, [data-testid="stSlider"] div:focus {
-        border-color: initial !important; /* 或 simple `border: none !important;` */
-        box-shadow: 0 0 0 2px rgba(90, 90, 90, 0.1) !important;
-    }
-    /* 侧边栏文本和标签 */
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown {
-        color: #374151 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- Removed the entire CSS style block as it was causing overrides ---
+# You can add specific CSS here if needed, but avoid !important rules that conflict with inline styles.
 
 # --- Header Image Section ---
 try:
@@ -101,17 +62,21 @@ except Exception as e:
 
 # --- Introduction ---
 st.markdown("""
-Welcome to the A'DAM LOOKOUT Review Insights Dashboard! **Dive in to discover:**
-- <span style="color:#5a5a5a">**Overview**</span>: Quick view of trends, sentiment, and ratings for A'DAM Lookout.
-- <span style="color:#5a5a5a">**Feedback Trending**</span>: Track peaks in praise or concerns over time.
-- <span style="color:#5a5a5a">**Review Behaviour**</span>: Understand when and how visitors share their feedback.
-- <span style="color:#5a5a5a">**Keyword Insights**</span>: Identify what visitors love or dislike.
-- <span style="color:#5a5a5a">**Customer Profile**</span>: Discover the global audience visited us.
-- <span style="color:#5a5a5a">**Forecast**</span>: Predict future review trends and pinpoint high-traffic days.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Overview**</span>: Quick view of trends, sentiment, and ratings.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Feedback Trending**</span>: Track peaks in praise or concerns over time.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Review Behaviour**</span>: Understand when and how visitors share their feedback.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Keyword Insights**</span>: Identify what visitors love or dislike.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Customer Profile**</span>: Discover the global audience visited us.
+<span style="font-size:20px; color:#b83e3e">**⚈⚈ Forecast Analysis**</span>: Predict future review trends and pinpoint high-traffic days.
 
-Use the sidebar to navigate pages and turn feedback into action!
 """, unsafe_allow_html=True)
+
+
+st.markdown("<h1 style='font-size:20px; color:#b83e3e;'>Use the sidebar to dive in each page and turn feedback into action!</h1>", unsafe_allow_html=True)
+
 st.markdown("<br>", unsafe_allow_html=True)
+
+
 
 # --- Data Loading (Simplified) ---
 @st.cache_data
