@@ -5,8 +5,8 @@ import pandas as pd
 import plotly.express as px
 from fuzzywuzzy import fuzz
 import re
-from PIL import Image
-from pathlib import Path
+from PIL import Image # Ensure PIL is imported
+from pathlib import Path # Ensure Path is imported
 from typing import List, Optional, Tuple
 import nltk
 from nltk.corpus import stopwords
@@ -17,8 +17,27 @@ import os
 
 from Home import download_nltk_resources
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Staff Performance Analysis", layout="wide")
+# --- Define Base Directory for favicon ---
+# This path goes up one level from 'pages' directory to find 'madam_logo_01.png'
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGO_PATH = BASE_DIR / "madam_logo_01.png"
+
+# --- Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
+try:
+    # Use madam_logo_01.png as the page icon (favicon)
+    img_logo_icon = Image.open(LOGO_PATH)
+    st.set_page_config(
+        page_title="Staff Performance Analysis", # This sets the browser tab title
+        page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
+        layout="wide"
+    )
+except FileNotFoundError:
+    # Fallback if madam_logo_01.png is not found
+    st.set_page_config(
+        page_title="Staff Performance Analysis",
+        page_icon="👨‍💼", # 备用 emoji 图标
+        layout="wide"
+    )
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():
@@ -75,20 +94,20 @@ def create_styled_metric(label: str, value_str: str, background_color: str = "#5
 """
     return html
 
-def extract_top_keywords(reviews: pd.Series, staff_name: str, num_keywords: int = 5) -> List[str]:  
+def extract_top_keywords(reviews: pd.Series, staff_name: str, num_keywords: int = 5) -> List[str]:
     stop_words = set(stopwords.words('english'))
     lemmatizer = WordNetLemmatizer()
     words = []
-    
+
     staff_name_lower = staff_name.lower()
     for review in reviews.dropna():
         tokens = word_tokenize(str(review).lower())
         filtered_words = [
-            lemmatizer.lemmatize(word) for word in tokens 
+            lemmatizer.lemmatize(word) for word in tokens
             if word.isalpha() and word not in stop_words and word != staff_name_lower and len(word) > 3
         ]
         words.extend(filtered_words)
-    
+
     word_counts = Counter(words)
     return [word for word, _ in word_counts.most_common(num_keywords)]
 
@@ -121,7 +140,7 @@ def analyze_staff_mentions(
         all_names = [staff_name] + variants
         pattern = r'\b(' + '|'.join(re.escape(name) for name in all_names) + r')\b'
         exact_matches = df[df[review_col].str.contains(pattern, case=False, na=False, regex=True)]
-        
+
         fuzzy_matches = []
         for idx, review in df[review_col].dropna().items():
             words = re.findall(r'\b\w+\b', str(review).lower())
@@ -132,9 +151,9 @@ def analyze_staff_mentions(
                             continue
                         fuzzy_matches.append(idx)
         fuzzy_matches_df = df.loc[fuzzy_matches].drop_duplicates()
-        
+
         combined_reviews_df = pd.concat([exact_matches, fuzzy_matches_df]).drop_duplicates()
-        
+
         num_mentions = len(combined_reviews_df)
         avg_rating = combined_reviews_df[rating_col].mean() if num_mentions > 0 and rating_col in combined_reviews_df.columns else None
         avg_sentiment = combined_reviews_df[sentiment_col].mean() if num_mentions > 0 and sentiment_col in combined_reviews_df.columns else None
@@ -169,7 +188,8 @@ st.markdown("""
 # --- Logo and Title Section ---
 def display_header():
     try:
-        logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png"
+        # Note: This logo_path is for the image displayed within the page, not the favicon.
+        logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png" # Assuming madam_logo_02.png is in the main directory
         madam_logo_display = Image.open(logo_path)
         col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
         with col_title:
@@ -183,6 +203,7 @@ def display_header():
     except Exception as e:
         st.error(f"An error occurred while loading the logo: {e}")
         st.title("Staff Performance Analysis - Madam")
+
 
 display_header()
 

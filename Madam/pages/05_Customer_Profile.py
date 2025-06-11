@@ -2,8 +2,8 @@
 
 import streamlit as st
 import pandas as pd
-from PIL import Image
-from pathlib import Path
+from PIL import Image # Ensure PIL is imported
+from pathlib import Path # Ensure Path is imported
 import plotly.express as px
 import pycountry
 import nltk
@@ -15,8 +15,27 @@ import os # Import os
 
 from Home import download_nltk_resources
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Customer Profile Analysis", layout="wide")
+# --- Define Base Directory for favicon ---
+# This path goes up one level from 'pages' directory to find 'madam_logo_01.png'
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGO_PATH = BASE_DIR / "madam_logo_01.png"
+
+# --- Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
+try:
+    # Use madam_logo_01.png as the page icon (favicon)
+    img_logo_icon = Image.open(LOGO_PATH)
+    st.set_page_config(
+        page_title="Customer Profile Analysis", # This sets the browser tab title
+        page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
+        layout="wide"
+    )
+except FileNotFoundError:
+    # Fallback if madam_logo_01.png is not found
+    st.set_page_config(
+        page_title="Customer Profile Analysis",
+        page_icon="👤", # 备用 emoji 图标
+        layout="wide"
+    )
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():
@@ -66,11 +85,11 @@ def get_language_country(language):
 def get_top_keywords(text_series, n=5):
     if text_series.empty or not text_series.str.strip().any():
         return ['No text']
-    
+
     try:
         # Combine all reviews into a single string
         text = ' '.join(text_series.dropna().astype(str).str.lower())
-        
+
         # Tokenize and clean
         tokens = word_tokenize(text)
         stop_words = set(stopwords.words('english') + [
@@ -78,10 +97,10 @@ def get_top_keywords(text_series, n=5):
             'table', 'staff', 'waitress', 'great', 'nice', 'good', 'bad'
         ])
         tokens = [word for word in tokens if word.isalnum() and word not in stop_words and len(word) > 3]
-        
+
         # Count frequencies
         word_counts = Counter(tokens)
-        
+
         # Get top n keywords
         top_keywords = [word for word, _ in word_counts.most_common(n)]
         return top_keywords if top_keywords else ['No keywords']
@@ -89,10 +108,10 @@ def get_top_keywords(text_series, n=5):
         return [f'Error: {str(e)}']
 
 
-
 # --- Logo and Title Section ---
 try:
-    logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png"
+    # Note: This logo_path is for the image displayed within the page, not the favicon.
+    logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png" # Assuming madam_logo_02.png is in the main directory
     madam_logo_display = Image.open(logo_path)
     col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
     with col_title:
@@ -105,6 +124,7 @@ except FileNotFoundError:
 except Exception as e:
     st.error(f"An error occurred while loading the logo: {e}")
     st.title("👤 Customer Profile Analysis - Madam")
+
 
 # --- Retrieve Processed Data from Session State ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:

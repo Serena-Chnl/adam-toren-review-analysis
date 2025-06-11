@@ -5,7 +5,30 @@ import pandas as pd
 import plotly.express as px
 import datetime # For date operations
 import os # Added for robust path construction
-# from PIL import Image # Optional: Only if you need more advanced image manipulation
+from PIL import Image # Ensure PIL is imported
+from pathlib import Path # Ensure Pathlib is imported
+
+# --- Define Base Directory for favicon ---
+# This path goes up one level from 'pages' directory to find 'madam_logo_01.png'
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGO_PATH = BASE_DIR / "madam_logo_01.png"
+
+# --- Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
+try:
+    # Use madam_logo_01.png as the page icon (favicon)
+    img_logo_icon = Image.open(LOGO_PATH)
+    st.set_page_config(
+        page_title="Dashboard Overview - Madam",
+        page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
+        layout="wide"
+    )
+except FileNotFoundError:
+    # Fallback if madam_logo_01.png is not found
+    st.set_page_config(
+        page_title="Dashboard Overview - Madam",
+        page_icon="🍽️", # 备用 emoji 图标
+        layout="wide"
+    )
 
 # --- Helper function for styled metrics ---
 def create_styled_metric(label, value_str, background_color="#510f30", label_color="#FFFFFF", value_color="#FFFFFF"):
@@ -30,9 +53,6 @@ def create_styled_metric(label, value_str, background_color="#510f30", label_col
 """
     return html
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Dashboard Overview - Madam", layout="wide")
-
 # --- MODIFIED SECTION: Title and Logo ---
 # Create columns: one for the title, a small spacer, and one for the logo.
 # Adjust the ratios in the list (e.g., [0.75, 0.05, 0.2]) to change the relative widths.
@@ -47,15 +67,16 @@ with col_logo:
     # This constructs an absolute path to the logo relative to this script file.
     try:
         # Get the directory of the current script (02_Dashboard_Overview.py)
+        # Note: This path is for the LOGO displayed within the page, not the favicon.
         current_script_dir = os.path.dirname(os.path.abspath(__file__))
-        # Go one level up to 'build_dashboard' and then specify the logo name
-        logo_path = os.path.join(current_script_dir, "..", "madam_logo_02.png")
+        # Go one level up to the main project directory and then specify the logo name
+        logo_path = os.path.join(current_script_dir, "..", "madam_logo_02.png") # Assuming madam_logo_02.png is in the main directory
 
         # Display the image. Adjust 'width' as needed.
         st.image(logo_path, width=350) # You can change the width
     except FileNotFoundError:
         # This specific error is caught if the path is definitely wrong and file doesn't exist
-        st.error(f"Logo image not found. Please check the path: {logo_path}. Ensure 'madam_logo_02.png' is in the 'build_dashboard' directory.")
+        st.error(f"Logo image not found. Please check the path: {logo_path}. Ensure 'madam_logo_02.png' is in the main project directory.")
     except Exception as e:
         # This catches other errors, including "Error opening" if the file is found but can't be read/processed
         st.error(f"An error occurred while loading the logo: {e}. Ensure the file is a valid image and the path is correct: {logo_path}")

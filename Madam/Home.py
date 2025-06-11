@@ -1,4 +1,4 @@
-# Home.py (Main script for multi-page app, updated for pre-processed data)
+# Home.py (Main script for multi-page app, updated for pre-processed data, header image, and favicon)
 
 import streamlit as st
 import pandas as pd
@@ -31,49 +31,57 @@ def download_nltk_resources() -> bool:
 
 # --- Define Base Directory ---
 BASE_DIR = Path(__file__).resolve().parent
-LOGO_PATH = BASE_DIR / "madam_logo_01.png"
+LOGO_PATH = BASE_DIR / "madam_logo_01.png"   # Path for the favicon
+HEADER_IMAGE_PATH = BASE_DIR / "madam_header.png" # Path for the main header image
 DATA_FILE_PATH = BASE_DIR / "Madam_dataset_cleaned.csv"
 
 # --- Page Configuration (Global) ---
 try:
-    img_icon = Image.open(LOGO_PATH)
+    # Use madam_logo_01.png as the page icon (favicon)
+    img_logo_icon = Image.open(LOGO_PATH)
     st.set_page_config(
-        page_title="Madam Review Insights",
-        page_icon=img_icon,
+        page_title="Madam Review Insights", # This sets the browser tab title
+        page_icon=img_logo_icon, # Set favicon using madam_logo_01.png
         layout="wide"
     )
 except FileNotFoundError:
+    # Fallback if madam_logo_01.png is not found
     st.set_page_config(
         page_title="Madam Review Insights",
-        page_icon="🍽️",
+        page_icon="🍽️", # Fallback emoji icon
         layout="wide"
     )
 
-# --- Logo and Enhanced Title Section ---
+# --- Header Image Section ---
+# This section exclusively handles displaying madam_header.png as the main page title image.
 try:
-    madam_logo_display = Image.open(LOGO_PATH)
-    col_title, col_logo_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
-    with col_title:
-        st.title("Madam Review Insights")
-    with col_logo:
-        st.image(madam_logo_display, width=180)
+    madam_header_display = Image.open(HEADER_IMAGE_PATH)
+    st.image(madam_header_display, use_container_width=True) # Display madam_header.png as the main title, taking full column width
 except FileNotFoundError:
-    st.title("Madam")
-    st.warning(f"Madam logo image not found at {LOGO_PATH}.")
+    # Fallback if the header image is not found.
+    # We are explicitly asked to remove the text header "Madam Review Insights",
+    # so we will use a more generic title here as a fallback or a warning.
+    st.title("Review Insights Dashboard")
+    st.warning(f"Madam header image not found at {HEADER_IMAGE_PATH}. Displaying a generic text title instead.")
 
 # --- Introduction ---
-st.markdown("""
-Ready to unlock the magic of Madam’s feedback? **Dive in to discover:**
-- <span style="color:#510f30">**Overview**</span>: Snapshot of key trends, sentiment, and ratings at a glance.
-- <span style="color:#510f30">**Feedback Trending**</span>: Spot peaks of praise or moments to polish with time-based insights.
-- <span style="color:#510f30">**Review Behaviour**</span>: Uncover when and how guests share their love (or gripes!).
-- <span style="color:#510f30">**Keyword Analysis**</span>: Find out what makes guests rave or rethink their visit.
-- <span style="color:#510f30">**Customer Profile**</span>: Meet the global fans behind the reviews.
-- <span style="color:#510f30">**Staff Performance**</span>: Celebrate the team stars sparking unforgettable moments.
-- <span style="color:#510f30">**Forecast**</span>: Predicts future review trends and highlights days.
 
-Use the sidebar to explore each page and turn feedback into action!
+st.markdown("<br>", unsafe_allow_html=True)
+
+st.markdown("""
+
+<span style="font-size:20px; color:#962965">**♦︎ Overview**</span>: Snapshot of key trends, sentiment, and ratings at a glance.
+<span style="font-size:20px; color:#962965">**♦︎ Feedback Trending**</span>: Spot peaks of praise or moments to polish with time-based insights.
+<span style="font-size:20px; color:#962965">**♦︎ Review Behaviour**</span>: Uncover when and how guests share their love (or gripes!).
+<span style="font-size:20px; color:#962965">**♦︎ Keyword Insights**</span>: Find out what makes guests rave or rethink their visit.
+<span style="font-size:20px; color:#962965">**♦︎ Customer Profile**</span>: Meet the global fans behind the reviews.
+<span style="font-size:20px; color:#962965">**♦︎ Staff Performance**</span>: Celebrate the team stars sparking unforgettable moments.
+<span style="font-size:20px; color:#962965">**♦︎ Forecast Analysis**</span>: Predicts future review trends and highlights days.
+
 """, unsafe_allow_html=True)
+
+st.markdown("<h1 style='font-size:20px; color:#962965;'>Use the sidebar to dive in each page and turn feedback into action!</h1>", unsafe_allow_html=True)
+
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- Data Loading (Simplified) ---
@@ -83,13 +91,13 @@ def load_cleaned_data(file_path):
     try:
         df = pd.read_csv(file_path)
         df['Time'] = pd.to_datetime(df['Time'], errors='coerce')
-        
+
         required_cols = ['Name', 'Rating', 'Time', 'Review', 'Language', 'compound', 'label']
         if not all(col in df.columns for col in required_cols):
             missing_cols = [col for col in required_cols if col not in df.columns]
             st.error(f"CRITICAL ERROR: Cleaned data is missing required columns: {', '.join(missing_cols)}. Please re-run the data cleaning script.")
             return None
-            
+
         nat_count = df['Time'].isna().sum()
         if nat_count > 0:
             st.warning(f"{nat_count} date/time entries could not be converted. These rows might be excluded from date-sensitive analyses.")
@@ -111,7 +119,7 @@ if 'processed_data' not in st.session_state:
         st.error("Failed to load pre-processed data. The dashboard cannot operate.")
 
 # --- Sidebar and Data Filtering ---
-st.sidebar.success("Select a page to begin your exploration!")
+st.sidebar.info("Select a page to begin your exploration!")
 st.sidebar.header("Review Explorer Filters")
 
 data = st.session_state.get('processed_data')
@@ -125,7 +133,7 @@ if data is not None and not data.empty:
 
     default_start = min_date
     default_end = max_date_data
-    
+
     start_date = st.sidebar.date_input("Start date", default_start, min_value=min_date, max_value=max_date_data)
     end_date = st.sidebar.date_input("End date", default_end, min_value=min_date, max_value=max_date_data)
 
@@ -144,7 +152,7 @@ st.subheader("▸ Filtered Data Preview 🔍")
 
 if filtered_data is not None:
     st.write(f"Displaying **{len(filtered_data)}** reviews from **{start_date.strftime('%Y-%m-%d')}** to **{end_date.strftime('%Y-%m-%d')}**.")
-    
+
     if not filtered_data.empty:
         cols_to_show = ['Name', 'Rating', 'Time', 'Review', 'Language', 'compound', 'label']
         st.dataframe(filtered_data[cols_to_show])

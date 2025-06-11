@@ -7,9 +7,32 @@ import plotly.express as px
 import datetime
 import calendar
 import numpy as np
-from PIL import Image
-from pathlib import Path
+from PIL import Image # Ensure PIL is imported
+from pathlib import Path # Ensure Path is imported
 import traceback
+
+# --- Define Base Directory for favicon ---
+# This path goes up one level from 'pages' directory to find 'madam_logo_01.png'
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGO_PATH = BASE_DIR / "madam_logo_01.png"
+
+# --- Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
+try:
+    # Use madam_logo_01.png as the page icon (favicon)
+    img_logo_icon = Image.open(LOGO_PATH)
+    st.set_page_config(
+        page_title="Feedback Trend Analysis - Madam", # This sets the browser tab title
+        page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
+        layout="wide"
+    )
+except FileNotFoundError:
+    # Fallback if madam_logo_01.png is not found
+    st.set_page_config(
+        page_title="Feedback Trend Analysis - Madam",
+        page_icon="🗓️", # 备用 emoji 图标
+        layout="wide"
+    )
+
 
 # --- Helper function for styled metrics ---
 def create_styled_metric(label, value_str, background_color="#510f30", text_color="white"):
@@ -31,12 +54,10 @@ def create_styled_metric(label, value_str, background_color="#510f30", text_colo
 """
     return html
 
-# --- Page Configuration ---
-st.set_page_config(page_title="Feedback Trend Analysis - Madam", layout="wide")
-
 # --- Logo and Title Section ---
 try:
-    logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png"
+    # Note: This logo_path is for the image displayed within the page, not the favicon.
+    logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png" # Assuming madam_logo_02.png is in the main directory
     madam_logo_display = Image.open(logo_path)
     col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
     with col_title:
@@ -49,6 +70,7 @@ except FileNotFoundError:
 except Exception as e:
     st.error(f"An error occurred while loading the logo: {e}")
     st.title("🗓️ Time and Trend Analysis - Madam")
+
 
 # --- Retrieve Processed Data from Session State ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
