@@ -188,6 +188,7 @@ if not filtered_data_for_main_trend.empty and \
             st.markdown(create_styled_metric("Peak Negative Review Duration", kpi_peak_duration_negative_str, background_color="#510f30", text_color="white"), unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:16px; color:#510f30; font-weight:normal;'>❖ Regardless of their location or the day of their visit, the time a review is posted indicates when customers are having phones in their hands and are most engaged and willing to provide feedback, making it the optimal moment to reach out to them.</h1>", unsafe_allow_html=True)
 
         # --- Stacked Bar Chart ---
         fig_hourly = go.Figure()

@@ -61,7 +61,6 @@ col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
 with col_title:
     st.title("Overview")
 
-
 with col_logo:
     # Define the path to your logo using a more robust method.
     # This constructs an absolute path to the logo relative to this script file.
@@ -82,15 +81,14 @@ with col_logo:
         st.error(f"An error occurred while loading the logo: {e}. Ensure the file is a valid image and the path is correct: {logo_path}")
 # --- END MODIFIED SECTION ---
 
-
-# --- Retrieve Processed Data from Session State (Your existing code) ---
+# --- Retrieve Processed Data from Session State ---
 if 'processed_data' not in st.session_state or st.session_state.processed_data is None:
     st.error("Welkom! To begin, please click the '**Home**' page from the sidebar to load the dataset automatically. All pages will be available right after ☺︎")
     st.stop()
 
 all_data = st.session_state.processed_data
 
-# --- Sidebar for Date Range Filter (Your existing code) ---
+# --- Sidebar for Date Range Filter ---
 st.sidebar.header("Dashboard Filters")
 filtered_data_for_overview = all_data
 
@@ -121,6 +119,11 @@ if 'Time' in all_data.columns and pd.api.types.is_datetime64_any_dtype(all_data[
         key="overview_end_date"
     )
 
+    # Apply date filter to the data
+    filtered_data_for_overview = filtered_data_for_overview[
+        (filtered_data_for_overview['Time'].dt.date >= start_date_ov) &
+        (filtered_data_for_overview['Time'].dt.date <= end_date_ov)
+    ]
 
 # --- Main Page Content ---
 st.markdown("<br>", unsafe_allow_html=True)
@@ -230,7 +233,6 @@ else:
             st.write("Rating column not available for distribution analysis.")
     else:
         st.write("'Time' column not available or in unsuitable format. Cannot display rating trends or distribution.")
-
 
     # --- Sentiment Trends and Distribution ---
     st.markdown("---")
