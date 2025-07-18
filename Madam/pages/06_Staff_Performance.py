@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz # Keep this import, but handle gracefully if not available
 import re
 from PIL import Image
 from pathlib import Path
@@ -15,30 +15,9 @@ from nltk.stem import WordNetLemmatizer
 from collections import Counter
 import os
 
-# from Home import download_nltk_resources # Keep this import
-
 # --- Define Base Directory for favicon ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGO_PATH = BASE_DIR / "madam_logo_01.png"
-
-
-
-# --- Page Configuration (REMOVE THIS BLOCK) ---
-# try:
-#     # Use madam_logo_01.png as the page icon (favicon)
-#     img_logo_icon = Image.open(LOGO_PATH)
-#     st.set_page_config(
-#         page_title="Staff Performance Analysis", # This sets the browser tab title
-#         page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
-#         layout="wide"
-#     )
-# except FileNotFoundError:
-#     # Fallback if madam_logo_01.png is not found
-#     st.set_page_config(
-#         page_title="Staff Performance Analysis",
-#         page_icon="👨‍💼", # 备用 emoji 图标
-#         layout="wide"
-#     )
 
 # --- START: Duplicated download_nltk_resources function (to avoid importing Home.py) ---
 # This is a workaround due to constraints, ideally it would be in a shared utility file.
@@ -52,8 +31,8 @@ def download_nltk_resources() -> bool:
             ('corpora/stopwords', 'stopwords'),
             ('corpora/wordnet', 'wordnet'),
             ('corpora/omw-1.4', 'omw-1.4'),
-            ('tokenizers/punkt', 'punkt'),
-            ('tokenizers/punkt_tab', 'punkt_tab')
+            ('tokenizers/punkt', 'punkt')
+            # 'tokenizers/punkt_tab' is often not needed and can cause issues if not found
         ]:
             try:
                 nltk.data.find(resource)
@@ -122,34 +101,79 @@ def create_styled_metric(label: str, value_str: str, background_color: str = "#5
     return html
 
 def extract_top_keywords(reviews: pd.Series, staff_name: str, num_keywords: int = 5) -> List[str]:
+    # Default NLTK stopwords
     stop_words = set(stopwords.words('english'))
-    lemmatizer = WordNetLemmatizer()
-    words = []
+    # Custom stopwords that are common in reviews but might not be insightful as keywords
+    # These are general positive/negative terms that might dilute more specific feedback.
+    custom_stopwords = {'great', 'good', 'amazing', 'best', 'very', 'really', 'much',
+                        'thank', 'thanks', 'nice', 'friendly', 'excellent', 'super',
+                        'always', 'definitely', 'highly', 'recommend', 'perfect', 'awesome', 'wonderful',
+                        'staff', 'service', 'madam', 'place', 'restaurant', 'food'} # Added more general review terms
+    all_stop_words = stop_words.union(custom_stopwords)
 
+    lemmatizer = WordNetLemmatizer()
+    all_filtered_words = []
     staff_name_lower = staff_name.lower()
+    staff_first_name_only_lower = staff_name_lower.split(' ')[0]
+
+    # Pre-calculate all staff name variations in lowercase for robust filtering
+    all_staff_name_variants_lower = {staff_name_lower, staff_first_name_only_lower}
+    for full_name in STAFF_NAMES: # Use full STAFF_NAMES to get all possible forms
+        all_staff_name_variants_lower.add(full_name.lower())
+        all_staff_name_variants_lower.add(full_name.lower().split(' ')[0]) # Add just first name
+    for variant_list in STAFF_NAME_VARIANTS.values(): # Add specific variants too
+        all_staff_name_variants_lower.update(v.lower() for v in variant_list)
+
+
     for review in reviews.dropna():
         tokens = word_tokenize(str(review).lower())
-        filtered_words = [
+        
+        # Filter tokens: alphabetic, not in stopwords, not a staff name/variant, min length
+        filtered_tokens_for_ngrams = [
             lemmatizer.lemmatize(word) for word in tokens
-            if word.isalpha() and word not in stop_words and word != staff_name_lower and len(word) > 3
+            if word.isalpha() and
+               word not in all_stop_words and
+               word not in all_staff_name_variants_lower and # Use the expanded set for filtering
+               len(word) > 2 # Allow words like "bar", "tip"
         ]
-        words.extend(filtered_words)
+        all_filtered_words.extend(filtered_tokens_for_ngrams)
 
-    word_counts = Counter(words)
-    return [word for word, _ in word_counts.most_common(num_keywords)]
+    # Count unigrams (single words)
+    unigram_counts = Counter(all_filtered_words)
 
-def extract_mentioned_languages(reviews: pd.Series, valid_languages: set) -> str:
-    """
-    Checks reviews for mentions of languages in valid_languages.
-    Returns comma-separated string of mentioned languages or 'None'.
-    """
-    mentioned_languages = set()
-    for review in reviews.dropna():
-        review_lower = str(review).lower()
-        for lang in valid_languages:
-            if re.search(r'\b' + re.escape(lang.lower()) + r'\b', review_lower):
-                mentioned_languages.add(lang)
-    return ', '.join(sorted(mentioned_languages)) if mentioned_languages else 'None'
+    # Count bigrams (two-word phrases)
+    bigrams = []
+    if len(all_filtered_words) > 1:
+        for i in range(len(all_filtered_words) - 1):
+            bigram = f"{all_filtered_words[i]} {all_filtered_words[i+1]}"
+            bigrams.append(bigram)
+    bigram_counts = Counter(bigrams)
+
+    # Combine unigram and bigram counts
+    # Using 'update' allows adding counts from bigrams to unigrams,
+    # treating bigrams as distinct items for commonality.
+    combined_counts = Counter()
+    combined_counts.update(unigram_counts)
+    combined_counts.update(bigram_counts)
+
+    # Filter out any keywords (unigram or bigram) that still contain staff names or their parts
+    final_keywords = []
+    for word, _ in combined_counts.most_common():
+        is_staff_name_related = False
+        # Check if the keyword (unigram or bigram) contains any part of a staff name
+        for name_part in all_staff_name_variants_lower: # Use the comprehensive set
+            if name_part in word: # Check if the staff name is part of the keyword
+                is_staff_name_related = True
+                break
+        
+        if not is_staff_name_related:
+            final_keywords.append(word)
+        
+        if len(final_keywords) >= num_keywords:
+            break
+
+    return final_keywords
+
 
 def analyze_staff_mentions(
     df: pd.DataFrame,
@@ -165,31 +189,50 @@ def analyze_staff_mentions(
     for staff_name in staff_list:
         variants = STAFF_NAME_VARIANTS.get(staff_name, [])
         all_names = [staff_name] + variants
+        
+        # Pattern for exact matches
         pattern = r'\b(' + '|'.join(re.escape(name) for name in all_names) + r')\b'
-        exact_matches = df[df[review_col].str.contains(pattern, case=False, na=False, regex=True)]
+        
+        # Filter reviews for exact matches first
+        exact_matches = df[df[review_col].str.contains(pattern, case=False, na=False, regex=True)].copy()
 
-        fuzzy_matches = []
-        for idx, review in df[review_col].dropna().items():
-            words = re.findall(r'\b\w+\b', str(review).lower())
-            for word in words:
-                if len(word) >= len(staff_name) - 1 and len(word) <= len(staff_name) + 1:
-                    if fuzz.ratio(word, staff_name.lower()) > 90:
-                        if staff_name.lower() == 'stan' and word.lower() in ['stand', 'standing', 'stood']:
-                            continue
-                        fuzzy_matches.append(idx)
-        fuzzy_matches_df = df.loc[fuzzy_matches].drop_duplicates()
+        # Fuzzy matching logic (this part might require fuzzywuzzy library)
+        # If fuzzywuzzy is not installed, this part will be skipped or cause an error.
+        # For robustness, we will try to use it but ensure the rest works without it.
+        fuzzy_matches_df = pd.DataFrame()
+        try:
+            from fuzzywuzzy import fuzz # Re-import here to ensure it's checked at runtime
+            fuzzy_matches_indices = []
+            for idx, review in df[review_col].dropna().items():
+                words = re.findall(r'\b\w+\b', str(review).lower())
+                for word in words:
+                    if len(word) >= len(staff_name) - 1 and len(word) <= len(staff_name) + 1:
+                        if fuzz.ratio(word, staff_name.lower()) > 90:
+                            # Specific exclusion for 'stan' to avoid common English words
+                            if staff_name.lower() == 'stan' and word.lower() in ['stand', 'standing', 'stood']:
+                                continue
+                            fuzzy_matches_indices.append(idx)
+            fuzzy_matches_df = df.loc[fuzzy_matches_indices].drop_duplicates().copy()
+        except ImportError:
+            # print("Warning: fuzzywuzzy not installed. Staff name matching will be exact only.")
+            pass # Silently proceed without fuzzy matching if not available
 
-        combined_reviews_df = pd.concat([exact_matches, fuzzy_matches_df]).drop_duplicates()
+        # Combine exact and fuzzy matches (if fuzzy_matches_df is not empty)
+        if not fuzzy_matches_df.empty:
+            combined_reviews_df = pd.concat([exact_matches, fuzzy_matches_df]).drop_duplicates()
+        else:
+            combined_reviews_df = exact_matches.copy() # If no fuzzy matches or fuzzywuzzy not found
 
         num_mentions = len(combined_reviews_df)
         avg_rating = combined_reviews_df[rating_col].mean() if num_mentions > 0 and rating_col in combined_reviews_df.columns else None
         avg_sentiment = combined_reviews_df[sentiment_col].mean() if num_mentions > 0 and sentiment_col in combined_reviews_df.columns else None
+        
         staff_performance_data.append({
             'Staff Name': staff_name,
             'Number of Mentions': num_mentions,
             'Average Rating of Mentions': avg_rating,
             'Average Sentiment of Mentions': avg_sentiment,
-            'Mentioned Reviews': combined_reviews_df
+            'Mentioned Reviews': combined_reviews_df # Keep the DataFrame for keyword/language extraction later
         })
     return pd.DataFrame(staff_performance_data)
 
@@ -216,7 +259,7 @@ st.markdown("""
 def display_header():
     try:
         # Note: This logo_path is for the image displayed within the page, not the favicon.
-        logo_path = Path(__file__).resolve().parent.parent / "madam_logo_02.png" # Assuming madam_logo_02.png is in the main directory
+        logo_path = BASE_DIR / "madam_logo_02.png" # Assuming madam_logo_02.png is in the main directory
         madam_logo_display = Image.open(logo_path)
         col_title, col_spacer, col_logo = st.columns([0.75, 0.05, 0.2])
         with col_title:
@@ -294,12 +337,6 @@ def apply_date_filters(df: pd.DataFrame) -> Tuple[pd.DataFrame, Optional[str], O
 
 filtered_data, start_date, end_date = apply_date_filters(all_data)
 
-# --- Date Range Display ---
-if start_date and end_date and start_date <= end_date:
-    st.markdown(f"From **{start_date.strftime('%Y-%m-%d')}** to **{end_date.strftime('%Y-%m-%d')}**")
-else:
-    st.markdown("**Full Dataset**")
-
 # --- Staff Performance Analysis ---
 st.subheader("▸ Staff Performance Analysis")
 st.markdown("Performance metrics for staff members based on review mentions, accounting for typos.")
@@ -316,33 +353,35 @@ else:
     if staff_summary_df.empty:
         st.info("No data found for staff names in the selected period.")
     else:
-        # --- KPI Display ---
-        mentioned_staff = staff_summary_df[staff_summary_df['Number of Mentions'] > 0]
+        # --- KPI Display (Improved Tie Handling for Display) ---
+        mentioned_staff = staff_summary_df[staff_summary_df['Number of Mentions'] > 0].copy() # Ensure copy to avoid SettingWithCopyWarning
+        
         kpi_top_1 = "N/A"
         kpi_top_2 = "N/A"
         kpi_top_3 = "N/A"
         
         if not mentioned_staff.empty:
+            # Sort by mentions in descending order
             sorted_staff = mentioned_staff.sort_values('Number of Mentions', ascending=False)
-            # Group by Number of Mentions to handle ties
-            grouped = sorted_staff.groupby('Number of Mentions')['Staff Name'].apply(list).reset_index()
-            grouped = grouped.sort_values('Number of Mentions', ascending=False)
             
-            # Initialize lists for top 3 ranks
-            top_1_names = []
-            top_2_names = []
-            top_3_names = []
+            # Get unique mention counts in descending order
+            unique_mention_counts = sorted_staff['Number of Mentions'].unique()
+
+            # Assign names to top 3 ranks, ensuring all ties are included
+            if len(unique_mention_counts) >= 1:
+                top_1_count = unique_mention_counts[0]
+                top_1_names = sorted_staff[sorted_staff['Number of Mentions'] == top_1_count]['Staff Name'].tolist()
+                kpi_top_1 = ', '.join(sorted(top_1_names)) # Sort names alphabetically for consistency
             
-            # Assign names to top 3 ranks, handling ties
-            if len(grouped) >= 1:
-                top_1_names = grouped.iloc[0]['Staff Name']
-                kpi_top_1 = ', '.join(top_1_names)
-            if len(grouped) >= 2:
-                top_2_names = grouped.iloc[1]['Staff Name']
-                kpi_top_2 = ', '.join(top_2_names)
-            if len(grouped) >= 3:
-                top_3_names = grouped.iloc[2]['Staff Name']
-                kpi_top_3 = ', '.join(top_3_names)
+            if len(unique_mention_counts) >= 2:
+                top_2_count = unique_mention_counts[1]
+                top_2_names = sorted_staff[sorted_staff['Number of Mentions'] == top_2_count]['Staff Name'].tolist()
+                kpi_top_2 = ', '.join(sorted(top_2_names))
+            
+            if len(unique_mention_counts) >= 3:
+                top_3_count = unique_mention_counts[2]
+                top_3_names = sorted_staff[sorted_staff['Number of Mentions'] == top_3_count]['Staff Name'].tolist()
+                kpi_top_3 = ', '.join(sorted(top_3_names))
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -415,28 +454,57 @@ else:
             )
             st.plotly_chart(fig_mentions, use_container_width=True)
 
-            # --- Top Keywords ---
+            # --- Top Keywords (Modified to include all tied staff) ---
             st.markdown("##### Top Keywords in Staff Reviews")
-            st.markdown("*Only top 3 most mentioned staff are included.*")
+            st.markdown("*Keywords are shown for the staff members in the top 3 tiers of mentions, including all ties.*") # Updated description
             keyword_data = []
+            
             if not mentioned_staff.empty:
-                valid_languages = set(all_data['Language'].dropna().unique())
-                top_3_staff = mentioned_staff.sort_values('Number of Mentions', ascending=False).head(3)
-                for _, row in top_3_staff.iterrows():
+                # Re-sort to ensure consistency and get unique tiers
+                sorted_staff_for_keywords_analysis = mentioned_staff.sort_values('Number of Mentions', ascending=False)
+                unique_mention_counts_for_keywords = sorted_staff_for_keywords_analysis['Number of Mentions'].unique()
+                
+                staff_to_process_for_keywords = pd.DataFrame()
+                
+                # Collect staff from the top 3 tiers of mention counts
+                if len(unique_mention_counts_for_keywords) >= 1:
+                    tier1_count = unique_mention_counts_for_keywords[0]
+                    staff_to_process_for_keywords = pd.concat([staff_to_process_for_keywords, sorted_staff_for_keywords_analysis[sorted_staff_for_keywords_analysis['Number of Mentions'] == tier1_count]])
+                
+                if len(unique_mention_counts_for_keywords) >= 2:
+                    tier2_count = unique_mention_counts_for_keywords[1]
+                    staff_to_process_for_keywords = pd.concat([staff_to_process_for_keywords, sorted_staff_for_keywords_analysis[sorted_staff_for_keywords_analysis['Number of Mentions'] == tier2_count]])
+                
+                if len(unique_mention_counts_for_keywords) >= 3:
+                    tier3_count = unique_mention_counts_for_keywords[2]
+                    staff_to_process_for_keywords = pd.concat([staff_to_process_for_keywords, sorted_staff_for_keywords_analysis[sorted_staff_for_keywords_analysis['Number of Mentions'] == tier3_count]])
+                
+                # Remove any duplicates that might arise from concat if a staff member was somehow in multiple tiers (unlikely but safe)
+                staff_to_process_for_keywords = staff_to_process_for_keywords.drop_duplicates(subset=['Staff Name']).copy()
+
+
+                for _, row in staff_to_process_for_keywords.iterrows(): # Iterate over the correctly selected staff
                     staff_name = row['Staff Name']
                     reviews_df = row['Mentioned Reviews']
+                    
                     top_keywords = extract_top_keywords(reviews_df['Review'], staff_name) if not reviews_df.empty else []
-                    keywords_str = ', '.join(top_keywords + ['N/A'] * (5 - len(top_keywords))) if top_keywords else ', '.join(['N/A'] * 5)
-                    mentioned_langs = extract_mentioned_languages(reviews_df['Review'], valid_languages) if not reviews_df.empty else 'None'
+                    
+                    # Ensure top_keywords list has enough items to fill 5 slots, using 'N/A' for missing
+                    keywords_str = ', '.join((top_keywords + ['N/A'] * 5)[:5]) if top_keywords else ', '.join(['N/A'] * 5)
+                    
+                    # Extract unique original languages from the 'Language' column of the mentioned reviews
+                    mentioned_original_languages = reviews_df['Language'].dropna().unique().tolist()
+                    mentioned_langs_str = ', '.join(sorted(mentioned_original_languages)) if mentioned_original_languages else 'None'
+
                     keyword_data.append({
                         'Staff Name': staff_name,
                         'Top Keywords': keywords_str,
-                        'Mentioned Languages': mentioned_langs
+                        'Mentioned Languages': mentioned_langs_str # This is now the original language of the review
                     })
             if keyword_data:
                 keyword_df = pd.DataFrame(keyword_data)
                 st.dataframe(
-                    keyword_df.sort_values(by='Staff Name'),
+                    keyword_df.sort_values(by='Staff Name'), # Sort by staff name for consistent display
                     use_container_width=True,
                     hide_index=True,
                     column_config={
@@ -445,11 +513,11 @@ else:
                             width="medium"
                         ),
                         "Top Keywords": st.column_config.TextColumn(
-                            help="Top 5 keywords associated with the staff, comma-separated",
+                            help="Top 5 keywords (unigrams or bigrams) associated with the staff, comma-separated",
                             width="large"
                         ),
                         "Mentioned Languages": st.column_config.TextColumn(
-                            help="Languages mentioned in reviews associated with the staff, comma-separated",
+                            help="Original languages of reviews mentioning the staff, comma-separated",
                             width="medium"
                         )
                     },
@@ -468,7 +536,7 @@ else:
             reviews_df = mentioned_staff[mentioned_staff['Staff Name'] == selected_staff_review]['Mentioned Reviews'].iloc[0]
             if not reviews_df.empty:
                 for _, row in reviews_df.iterrows():
-                    st.markdown(f"**Reviewer:** {row.get('Name', 'N/A')} | **Date:** {row['Time'].strftime('%Y-%m-%d %H:%M') if pd.notnull(row['Time']) else 'N/A'} | **Rating:** {row.get('Rating', 'N/A')} ⭐ | **Sentiment:** {row.get('label', 'N/A')} ({row.get('compound', 0.0):.2f})")
+                    st.markdown(f"**Reviewer:** {row.get('Name', 'N/A')} | **Date:** {row['Time'].strftime('%Y-%m-%d %H:%M') if pd.notnull(row['Time']) else 'N/A'} | **Rating:** {row.get('Rating', 'N/A')} ⭐ | **Sentiment:** {row.get('label', 'N/A')} ({row.get('compound', 0.0):.2f}) | **Original Language:** {row.get('Language', 'N/A')}")
                     st.markdown(f"> _{row['Review']}_")
                     st.markdown("---")
             else:
