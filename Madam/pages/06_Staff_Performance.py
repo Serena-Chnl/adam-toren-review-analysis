@@ -5,8 +5,8 @@ import pandas as pd
 import plotly.express as px
 from fuzzywuzzy import fuzz
 import re
-from PIL import Image # Ensure PIL is imported
-from pathlib import Path # Ensure Path is imported
+from PIL import Image
+from pathlib import Path
 from typing import List, Optional, Tuple
 import nltk
 from nltk.corpus import stopwords
@@ -15,33 +15,60 @@ from nltk.stem import WordNetLemmatizer
 from collections import Counter
 import os
 
-from Home import download_nltk_resources
+# from Home import download_nltk_resources # Keep this import
 
 # --- Define Base Directory for favicon ---
-# This path goes up one level from 'pages' directory to find 'madam_logo_01.png'
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGO_PATH = BASE_DIR / "madam_logo_01.png"
 
-# --- Page Configuration (MUST BE THE FIRST STREAMLIT COMMAND) ---
-try:
-    # Use madam_logo_01.png as the page icon (favicon)
-    img_logo_icon = Image.open(LOGO_PATH)
-    st.set_page_config(
-        page_title="Staff Performance Analysis", # This sets the browser tab title
-        page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
-        layout="wide"
-    )
-except FileNotFoundError:
-    # Fallback if madam_logo_01.png is not found
-    st.set_page_config(
-        page_title="Staff Performance Analysis",
-        page_icon="👨‍💼", # 备用 emoji 图标
-        layout="wide"
-    )
+
+
+# --- Page Configuration (REMOVE THIS BLOCK) ---
+# try:
+#     # Use madam_logo_01.png as the page icon (favicon)
+#     img_logo_icon = Image.open(LOGO_PATH)
+#     st.set_page_config(
+#         page_title="Staff Performance Analysis", # This sets the browser tab title
+#         page_icon=img_logo_icon, # 设置 favicon 为 madam_logo_01.png
+#         layout="wide"
+#     )
+# except FileNotFoundError:
+#     # Fallback if madam_logo_01.png is not found
+#     st.set_page_config(
+#         page_title="Staff Performance Analysis",
+#         page_icon="👨‍💼", # 备用 emoji 图标
+#         layout="wide"
+#     )
+
+# --- START: Duplicated download_nltk_resources function (to avoid importing Home.py) ---
+# This is a workaround due to constraints, ideally it would be in a shared utility file.
+def download_nltk_resources() -> bool:
+    """
+    Downloads required NLTK resources for text processing.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        for resource, download_name in [
+            ('corpora/stopwords', 'stopwords'),
+            ('corpora/wordnet', 'wordnet'),
+            ('corpora/omw-1.4', 'omw-1.4'),
+            ('tokenizers/punkt', 'punkt'),
+            ('tokenizers/punkt_tab', 'punkt_tab')
+        ]:
+            try:
+                nltk.data.find(resource)
+            except LookupError:
+                nltk.download(download_name, quiet=True)
+        return True
+    except Exception as e:
+        print(f"Error downloading NLTK resources: {e}")
+        return False
+# --- END: Duplicated download_nltk_resources function ---
 
 # Call centralized NLTK resource download
 if not download_nltk_resources():
     st.error("Failed to download required NLTK resources. Some features may not work.")
+
 
 # --- Configuration ---
 STAFF_NAMES = [
