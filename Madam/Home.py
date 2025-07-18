@@ -1,4 +1,4 @@
-# Home.py (Main script for multi-page app, updated for pre-processed data, header image, and favicon)
+# Home.py
 
 import streamlit as st
 import pandas as pd
@@ -6,28 +6,37 @@ from PIL import Image
 from pathlib import Path
 import datetime
 import nltk
+import ssl # Import ssl module
 
-def download_nltk_resources() -> bool:
-    """
-    Downloads required NLTK resources for text processing.
-    Returns True if successful, False otherwise.
-    """
+# --- SSL workaround for NLTK downloads (Add this block) ---
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    # Legacy Python that doesn't have _create_unverified_https_context
+    pass
+else:
+    # Disable certificate verification
+    ssl._create_default_https_context = _create_unverified_https_context
+# ----------------------------------------------------------
+
+# Download required NLTK data
+nltk_resources = [
+    ('corpora/stopwords', 'stopwords'),
+    ('tokenizers/punkt', 'punkt'),
+    ('tokenizers/punkt_tab', 'punkt_tab'), # Already here, which is good
+    ('corpora/wordnet', 'wordnet'),
+    ('corpora/omw-1.4', 'omw-1.4')
+]
+
+for resource_path, resource_name in nltk_resources:
     try:
-        for resource, download_name in [
-            ('corpora/stopwords', 'stopwords'),
-            ('corpora/wordnet', 'wordnet'),
-            ('corpora/omw-1.4', 'omw-1.4'),
-            ('tokenizers/punkt', 'punkt'),
-            ('tokenizers/punkt_tab', 'punkt_tab')
-        ]:
-            try:
-                nltk.data.find(resource)
-            except LookupError:
-                nltk.download(download_name, quiet=True)
-        return True
-    except Exception as e:
-        print(f"Error downloading NLTK resources: {e}")
-        return False
+        nltk.data.find(resource_path)
+    except LookupError:
+        try:
+            # Download will now use the unverified context if the workaround is active
+            nltk.download(resource_name, quiet=True)
+        except Exception as e:
+            st.warning(f"Failed to download {resource_name}: {e}")
 
 # --- Define Base Directory ---
 BASE_DIR = Path(__file__).resolve().parent
