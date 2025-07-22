@@ -44,9 +44,22 @@ def download_nltk_resources() -> bool:
         return False
 # --- END: Duplicated download_nltk_resources function ---
 
-# Call centralized NLTK resource download
-if not download_nltk_resources():
-    st.error("Failed to download required NLTK resources. Some features may not work.")
+# --- NLTK Resource Download ---
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords', quiet=True)
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+
+# Add this to download 'punkt_tab'
+try:
+    nltk.data.find('tokenizers/punkt_tab') # Corrected path for punkt_tab if it's a tokenizer
+except LookupError:
+    nltk.download('punkt_tab', quiet=True)
 
 
 # --- Configuration ---
