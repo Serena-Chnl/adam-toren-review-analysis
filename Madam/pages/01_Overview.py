@@ -2,6 +2,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import datetime # For date operations
 import os # Added for robust path construction
@@ -231,8 +232,25 @@ else:
             st.plotly_chart(fig_rating_dist, use_container_width=True)
         else:
             st.write("Rating column not available for distribution analysis.")
-    else:
-        st.write("'Time' column not available or in unsuitable format. Cannot display rating trends or distribution.")
+
+        # ----------- 3. Total Review Counts Trend (Cumulative) -----------
+        # st.markdown("###### Total Review Count Trend (Cumulative)")
+
+        reviews_per_day = time_series_data.resample('D').size().dropna()
+
+        if not reviews_per_day.empty:
+            cumulative_reviews = reviews_per_day.cumsum().reset_index()
+            cumulative_reviews.columns = ['Time', 'Cumulative Count']
+
+            fig_total_reviews_trend = px.line(cumulative_reviews, x='Time', y='Cumulative Count',
+                                           title='Cumulative Total Review Count Trend (Daily)',
+                                           labels={'Cumulative Count': 'Cumulative Total Reviews', 'Time': 'Date'})
+            fig_total_reviews_trend.update_traces(mode='lines+markers', line_color='#510f30')
+            st.plotly_chart(fig_total_reviews_trend, use_container_width=True)
+        else:
+            st.write("No data to display for daily total review count trend.")
+
+        
 
     # --- Sentiment Trends and Distribution ---
     st.markdown("---")
