@@ -68,7 +68,7 @@ STAFF_NAMES = [
     "Ektor", "Eleonore", "Georgios Moy", "Georgios Myro", "Vikram", "Jacky", "Janet", "Jason", "Jody",
     "Joran", "Jorge", "Julia Van Santen", "Konstantin", "LeÏse", "Leoncio", "Lucia", "Luenkan", "Malik",
     "Maryna", "Maud", "Megan", "Mery", "Misha", "Swalla", "Neal", "Nikita", "Saul", "Silven", "Stijn",
-    "Tessa D.", "Tessa H.", "Tiago", "Thijmen", "Thys", "Vasko", "Xenia", "Ziga", "Stan", "Musa", "Maja",
+    "Tessa D.", "Tessa H.", "Tiago", "Thijmen", "Thys", "Vasko", "Xenia", "Yesni", "Ziga", "Stan", "Musa", "Maja",
     "Chloee Coolens", "Carlos"
 ]
 
